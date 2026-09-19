@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0044a114d1ebfbe4ab521e2f52f5eec9, type: 3}
+  m_Name: LevelConfig_Level2Colombia
+  m_EditorClassIdentifier: Assembly-CSharp::LevelConfig
+  levelName: "El Hombre Caim\xE1n"
+  regionName: Colombia
+  requiredIngredient: {fileID: 11400000, guid: 1df87e4ed08f9b14b8695bf4dd50ad8f, type: 2}
+  recipes:
+  - {fileID: 11400000, guid: 636823037c2252f4c98c7306cbb74313, type: 2}
+  - {fileID: 11400000, guid: e11908742b815364ab6986484c0c6e61, type: 2}
+  - {fileID: 11400000, guid: 8c738d1ff31bc7f4d8a94708e8f6d598, type: 2}
+  - {fileID: 11400000, guid: f166cd7d3bb4aa74790c8ed5b8b8c8e0, type: 2}
+  - {fileID: 11400000, guid: 9f8fe92f50711224ab2709f48d2f3c1e, type: 2}
+  - {fileID: 11400000, guid: 7a55d3d1a4701ba4e8153f49482e7c84, type: 2}

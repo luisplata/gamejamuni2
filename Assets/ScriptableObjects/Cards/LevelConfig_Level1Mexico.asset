@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0044a114d1ebfbe4ab521e2f52f5eec9, type: 3}
+  m_Name: LevelConfig_Level1Mexico
+  m_EditorClassIdentifier: Assembly-CSharp::LevelConfig
+  levelName: El Ahuizotl
+  regionName: "M\xE9xico"
+  requiredIngredient: {fileID: 11400000, guid: 73ddc3817602f5f408165551adaec29f, type: 2}
+  recipes:
+  - {fileID: 11400000, guid: e22fd31e59fb34d489b0d450f3c248bf, type: 2}
+  - {fileID: 11400000, guid: 44463d62398fbe145bc3226c557e23e6, type: 2}
+  - {fileID: 11400000, guid: 61b65eaaa1b34e642b9b09805bc863fe, type: 2}
+  - {fileID: 11400000, guid: f10e0b773118f02469cf999c4fed516b, type: 2}
+  - {fileID: 11400000, guid: 065aa033beaff124bb4e696f874ed56a, type: 2}
+  - {fileID: 11400000, guid: 2811a3305d09014489c295006d34f3e2, type: 2}
