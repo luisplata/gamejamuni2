@@ -1,0 +1,242 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump type for the next release'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate version & tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.semver.outputs.tag }}
+      sha7: ${{ steps.semver.outputs.sha7 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Guard — release only from main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Release dispatch only allowed from main (got '${GITHUB_REF}'). Aborting before any build."
+          exit 1
+
+      - name: Compute next SemVer tag
+        id: semver
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: |
+          set -euo pipefail
+          SHA7="${GITHUB_SHA:0:7}"
+          LATEST="$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1 || true)"
+          if [ -z "$LATEST" ]; then
+            LATEST="$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+[-.]' | head -n1 | sed -E 's/^v([0-9]+\.[0-9]+\.[0-9]+).*$/v\1/' || true)"
+          fi
+          if [ -z "$LATEST" ]; then
+            NEXT="v1.0.0"
+          else
+            BASE="${LATEST#v}"
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
+            case "$BUMP" in
+              patch) NEXT="v${MAJOR}.${MINOR}.$((PATCH + 1))" ;;
+              minor) NEXT="v${MAJOR}.$((MINOR + 1)).0" ;;
+              major) NEXT="v$((MAJOR + 1)).0.0" ;;
+              *) echo "::error::Unknown bump type '${BUMP}'"; exit 1 ;;
+            esac
+          fi
+          echo "Computed next tag: ${NEXT} (sha7=${SHA7})"
+          echo "tag=${NEXT}" >> "$GITHUB_OUTPUT"
+          echo "sha7=${SHA7}" >> "$GITHUB_OUTPUT"
+
+      - name: Pre-check tag & release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.semver.outputs.tag }}
+        run: |
+          set -euo pipefail
+          OWNER="${GITHUB_REPOSITORY%%/*}"
+          REPO="${GITHUB_REPOSITORY#*/}"
+          if ! gh api "repos/${OWNER}/${REPO}/git/ref/tags/${TAG}" >/dev/null 2>&1; then
+            echo "Tag ${TAG} is free — proceeding."
+            exit 0
+          fi
+          echo "::warning::Tag ${TAG} already exists — checking idempotency."
+          if gh api "repos/${OWNER}/${REPO}/releases/tags/${TAG}" >/dev/null 2>&1; then
+            DRAFT="$(gh api "repos/${OWNER}/${REPO}/releases/tags/${TAG}" --jq '.draft')"
+            TARGET="$(gh api "repos/${OWNER}/${REPO}/releases/tags/${TAG}" --jq '.target_commitish')"
+            if [ "$DRAFT" = "true" ] && [ "$TARGET" = "$GITHUB_SHA" ]; then
+              echo "::warning::Tag ${TAG} has a draft release on this commit — idempotent re-publish."
+              exit 0
+            fi
+            echo "::error::A release for ${TAG} already exists (target=${TARGET}, draft=${DRAFT}). Aborting — pick a different bump or delete the release."
+            exit 1
+          fi
+          TAG_COMMIT="$(git rev-list -n 1 "refs/tags/${TAG}" 2>/dev/null || echo '')"
+          if [ "$TAG_COMMIT" = "$GITHUB_SHA" ]; then
+            echo "::warning::Tag ${TAG} exists on this commit with no release — proceeding idempotently."
+            exit 0
+          fi
+          echo "::error::Tag ${TAG} already exists on commit ${TAG_COMMIT} (this dispatch targets ${GITHUB_SHA}). Aborting."
+          exit 1
+
+  build-windows:
+    name: Build Windows
+    needs: [validate]
+    runs-on: windows-2022
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      actions: write
+    env:
+      TAG: ${{ needs.validate.outputs.tag }}
+      SHA7: ${{ needs.validate.outputs.sha7 }}
+      UNITY_VERSION: 6000.3.10f1
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Create LFS file list
+        run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
+
+      - name: Restore LFS cache
+        uses: actions/cache@v4
+        id: lfs-cache
+        with:
+          path: .git/lfs
+          key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
+
+      - name: Git LFS Pull
+        run: git lfs pull
+
+      - uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-StandaloneWindows64-${{ hashFiles('.lfs-assets-id', 'Packages/packages-lock.json') }}-${{ github.run_id }}
+          restore-keys: |
+            Library-StandaloneWindows64-
+            Library-
+
+      - name: Build Windows
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: .
+          unityVersion: ${{ env.UNITY_VERSION }}
+          targetPlatform: StandaloneWindows64
+          buildName: GameJamUni2-Windows
+          buildsPath: build
+
+      - name: Strip DoNotShip folders
+        shell: pwsh
+        run: |
+          Get-ChildItem "build/StandaloneWindows64" -Directory | Where-Object { $_.Name -like "*DoNotShip*" -or $_.Name -like "*BackUpThisFolder*" } | ForEach-Object { Write-Host "Removing $($_.FullName)"; Remove-Item $_.FullName -Recurse -Force }
+          Get-ChildItem "build/StandaloneWindows64" -Recurse -Directory | Where-Object { $_.Name -like "*DoNotShip*" } | ForEach-Object { Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue }
+
+      - name: Package Windows
+        shell: pwsh
+        run: |
+          $asset = "GameJamUni2-Windows-${env:TAG}-${env:SHA7}.zip"
+          Compress-Archive -Path "build/StandaloneWindows64/*" -DestinationPath $asset -Force
+          Get-ChildItem $asset | Format-List Length,Name
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GameJamUni2-Windows-${{ needs.validate.outputs.sha7 }}
+          path: GameJamUni2-Windows-*.zip
+          retention-days: 1
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs: [build-windows, validate]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download release assets
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          pattern: GameJamUni2-*
+          merge-multiple: true
+
+      - name: Verify Windows asset is present
+        run: |
+          set -euo pipefail
+          ls -lh release-assets/
+          if [ -z "$(find release-assets -maxdepth 1 -name "GameJamUni2-Windows-*.zip" -print -quit)" ]; then
+            echo "::error::Missing release asset for Windows — refusing to publish."
+            exit 1
+          fi
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.validate.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: GameJamUni2 ${{ needs.validate.outputs.tag }}
+          generate_release_notes: true
+          overwrite_files: true
+          fail_on_unmatched_files: true
+          files: |
+            release-assets/GameJamUni2-*.zip
+
+  deploy-itch:
+    name: Deploy to Itch.io
+    needs: [publish, validate]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    env:
+      TAG: ${{ needs.validate.outputs.tag }}
+      SHA7: ${{ needs.validate.outputs.sha7 }}
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          pattern: GameJamUni2-*
+          merge-multiple: true
+
+      - name: Unpack for Butler
+        run: |
+          set -euo pipefail
+          mkdir -p itch/Windows
+          unzip -q "release-assets/GameJamUni2-Windows-${TAG}-${SHA7}.zip" -d itch/Windows
+          ls -R itch | head -n 100 || true
+
+      - name: Deploy Windows
+        uses: josephbmanley/butler-publish-itchio-action@master
+        env:
+          BUTLER_CREDENTIALS: ${{ secrets.BUTLER_CREDENTIALS }}
+          CHANNEL: windows
+          ITCH_GAME: your-itch-game
+          ITCH_USER: your-itch-user
+          PACKAGE: itch/Windows
