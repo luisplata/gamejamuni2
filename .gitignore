@@ -45,3 +45,6 @@ skills-lock.json
 # OS
 .DS_Store
 Thumbs.db
+
+# CI (game-ci/unity-builder) — generated on the runner, must not dirty the tree
+.lfs-assets-id
