@@ -18,6 +18,9 @@ public class HandController : MonoBehaviour
     [SerializeField] DeckData deck;
     [SerializeField] TMPro.TMP_Text refillLabel;
 
+    [Tooltip("World-space player view; park/cook/discard triggers. Null = no-op.")]
+    [SerializeField] PlayerView playerView;
+
     /// <summary>Current level's recipe config; loaded dynamically so the same scene serves both levels.</summary>
     [SerializeField] LevelConfig currentLevel;
 
@@ -64,6 +67,16 @@ public class HandController : MonoBehaviour
     /// <summary>Root that spawned cards are parented to (drag coordinate space).</summary>
     public RectTransform HandRoot => handRoot;
 
+    /// <summary>The current level's config — the enemy identity for the game loop (levelName + recipes).</summary>
+    public LevelConfig CurrentLevel => currentLevel;
+
+    /// <summary>
+    /// The live dish result card (null between cooks). Exposed so the game loop
+    /// can trigger the per-kind serve reaction AFTER resolution, when the dish
+    /// card already exists in the scene.
+    /// </summary>
+    public DishView LiveDish => _dishCard;
+
     /// <summary>
     /// START: clears both zone queues and the refill counter, destroys all
     /// existing hand cards, then deals a full hand (each card appears at the
@@ -107,6 +120,7 @@ public class HandController : MonoBehaviour
 
         if (cornerZone.Count > 0)
         {
+            playerView?.OnDiscard();
             ConsumeZone(cornerZone);
             _refillsUsed++;
             UpdateRefillLabel();
@@ -115,19 +129,20 @@ public class HandController : MonoBehaviour
     }
 
     /// <summary>
-    /// PREPARAR COMIDA: no-ops with an empty cook queue (confirmed behavior
-    /// change — a 1-2 card cook now resolves AND consumes, yielding Filler/Fail).
-    /// Gathers the cooked CardData from the center zone BEFORE it is consumed
-    /// (consume destroys the cards), clears the previous dish, resolves the cook
-    /// against the current level's config plus the global catalog (cross-level
-    /// exact matches surface as Presented/blue), spawns the dish result card
-    /// right of center, then consumes the cook queue and tops the hand up. The
-    /// trash queue is NOT touched — it is only dumped by REFILL. Effects
-    /// (life/patience) are display-only.
+    /// PREPARAR COMIDA: returns null with an empty cook queue (confirmed
+    /// behavior change — nothing cooked → the game loop no-ops without
+    /// punishment). Otherwise gathers the cooked CardData from the center zone
+    /// BEFORE it is consumed (consume destroys the cards), clears the previous
+    /// dish, resolves the cook against the current level's config plus the
+    /// global catalog (cross-level exact matches surface as Presented/blue),
+    /// spawns the dish result card right of center, then consumes the cook
+    /// queue and tops the hand up. The trash queue is NOT touched — it is only
+    /// dumped by REFILL. The returned result lets the game loop apply the
+    /// life/patience mapping.
     /// </summary>
-    public void PrepareFood()
+    public ResolutionResult? PrepareFood()
     {
-        if (centerZone.Count == 0) return;
+        if (centerZone.Count == 0) return null;
 
         var cooked = new List<CardData>(centerZone.Count);
         foreach (var card in centerZone.Held)
@@ -136,9 +151,11 @@ public class HandController : MonoBehaviour
         ClearDish();
         var result = RecipeResolver.Resolve(cooked, currentLevel, recipeDatabase);
         SpawnDish(result);
+        playerView?.OnCook();
 
         ConsumeZone(centerZone);
         TopUpHand();
+        return result;
     }
 
     /// <summary>
@@ -221,6 +238,10 @@ public class HandController : MonoBehaviour
         if (zone == cornerZone && _refillsUsed >= config.maxRefillsPerGame) return false;
         if (!zone.Accept(card)) return false;
 
+        // Player reacts to the park destination (design D1 mapping).
+        if (zone == centerZone) playerView?.OnParkCook();
+        else if (zone == cornerZone) playerView?.OnParkTrash();
+
         _cards.Remove(card);
         for (int i = 0; i < _cards.Count; i++) _cards[i].SetSlot(i); // re-layout NOW
         card.PlaceInZone(zone);
@@ -277,7 +298,7 @@ public class HandController : MonoBehaviour
         rt.anchoredPosition = config.dealOrigin;
 
         var card = go.GetComponent<CardView>();
-        card.Init(this, config, centerZone, cornerZone, slotIndex);
+        card.Init(this, config, centerZone, cornerZone, slotIndex, playerView);
         card.SetData(data);
         _cards.Add(card);
         card.DealIn();

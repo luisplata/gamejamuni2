@@ -21,6 +21,7 @@ public class CardView : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDrag
     DropZone _center;
     DropZone _corner;
     int _slotIndex;
+    PlayerView _playerView;
     bool _dragging;
     bool _discarding;
     bool _parked;
@@ -37,7 +38,7 @@ public class CardView : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDrag
     /// Called once by HandController at spawn. Caches refs, applies the
     /// configured card size and colors, and records the initial slot.
     /// </summary>
-    public void Init(HandController hand, CardVisualConfig config, DropZone center, DropZone corner, int slotIndex)
+    public void Init(HandController hand, CardVisualConfig config, DropZone center, DropZone corner, int slotIndex, PlayerView playerView = null)
     {
         if (rect == null) rect = GetComponent<RectTransform>();
         if (group == null) group = GetComponent<CanvasGroup>();
@@ -47,6 +48,7 @@ public class CardView : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDrag
         _center = center;
         _corner = corner;
         _slotIndex = slotIndex;
+        _playerView = playerView;
 
         rect.sizeDelta = config.cardSize;
         var image = GetComponent<UnityEngine.UI.Image>();
@@ -156,6 +158,9 @@ public class CardView : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDrag
     public void OnBeginDrag(PointerEventData e)
     {
         if (_discarding || _parked) return;
+        // Any destination drag starts the grab reaction (design D1: grab fires
+        // once at drag begin, regardless of where it ends).
+        _playerView?.OnGrabCard();
         // Kill any in-flight move (deal-in / re-layout / return) BEFORE dragging:
         // the coroutine writes anchoredPosition every frame and would otherwise
         // fight OnDrag, keeping the card glued to the hand arc and making the
