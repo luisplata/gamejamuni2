@@ -16,4 +16,7 @@ public class GameLoopConfig : ScriptableObject
 
     [Tooltip("Seconds for a full fade (black→transparent reveal or transparent→black cover).")]
     public float fadeDuration = 1f;
+
+    [Tooltip("Scene loaded on WIN or GAME OVER (after the fade cover). Empty/null falls back to the currently active scene's name.")]
+    public string nextSceneName = "Prototype";
 }

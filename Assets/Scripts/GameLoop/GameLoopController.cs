@@ -1,25 +1,27 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using TMPro;
 
 /// <summary>
 /// Owns the round rules: player lives, enemy patience (the enemy identity is
-/// the current LevelConfig), win/lose, and the fade + auto-reset flow. Serves
+/// the current LevelConfig), win/lose, and the fade + scene-reload flow. Serves
 /// as the bridge between the UI (PREPARAR button) and HandController.
 /// The game starts AUTOMATICALLY on scene load (Start → StartGame): the intro
 /// fade reveal + deal happens without any button press.
 ///
 /// Mapping (user-validated, single switch in ServeFood):
-///   Green (Normal) / Gold (Star)  → WIN        → fade + full reset
+///   Green (Normal) / Gold (Star)  → WIN        → fade → load next scene
 ///   Blue (Presented) / Purple (Cursed) / Gray (Filler) → patience −1 (benign retry)
 ///   Red (Fail "Comida Cruda")     → BITE       → life −1, patience refills
-///   Patience 0 → BITE (life −1, patience refills); lives 0 → GAME OVER → fade + full reset.
+///   Patience 0 → BITE (life −1, patience refills); lives 0 → GAME OVER → fade → load next scene.
 ///
 /// Animation wiring (all null-guarded — unwired views no-op): PlayerView/
 /// EnemyView receive per-outcome triggers; win/game-over reactions fire in
 /// ServeFood/Bite BEFORE the round-end fade (DelayedFade) so they stay visible
-/// for ReactionShowDelay seconds. ResetRound hard-returns both views to Idle.
+/// for ReactionShowDelay seconds. The scene reload destroys the old views; the
+/// fresh scene instance starts with new Idle views.
 ///
 /// All runtime state lives HERE on the MonoBehaviour — never in the config SO.
 /// </summary>
@@ -55,6 +57,9 @@ public class GameLoopController : MonoBehaviour
     int _lives;
     int _patience;
     bool _roundActive;
+
+    /// <summary>Guards against loading the next scene twice (defense-in-depth: the fade overlay already blocks input).</summary>
+    bool _loadingScene;
 
     /// <summary>The enemy identity: the current level's config (levelName + recipes = gustos).</summary>
     public LevelConfig Enemy => handController != null ? handController.CurrentLevel : null;
@@ -132,17 +137,17 @@ public class GameLoopController : MonoBehaviour
         }
     }
 
-    /// <summary>Round won: stop input, cover to black, then full reset + reveal.</summary>
+    /// <summary>Round won: stop input, cover to black, then load the next scene.</summary>
     void WinRound()
     {
         _roundActive = false;
-        StartCoroutine(DelayedFade(ReactionShowDelay, ResetRound));
+        StartCoroutine(DelayedFade(ReactionShowDelay, LoadNextScene));
     }
 
     /// <summary>
     /// Enemy bite: −1 life, patience refills to max, HUD updated. At 0 lives →
     /// GAME OVER: the eat reaction fires BEFORE the fade, stop input, cover to
-    /// black (delayed), then full reset + reveal.
+    /// black (delayed), then load the next scene.
     /// </summary>
     void Bite()
     {
@@ -154,26 +159,24 @@ public class GameLoopController : MonoBehaviour
             _roundActive = false;
             playerView?.OnGameOver();
             enemyView?.PlayReaction(EnemyReaction.Eaten);
-            StartCoroutine(DelayedFade(ReactionShowDelay, ResetRound));
+            StartCoroutine(DelayedFade(ReactionShowDelay, LoadNextScene));
         }
     }
 
     /// <summary>
-    /// Full round reset (runs behind the black cover): restore lives/patience,
-    /// hard-return both character views to Idle, deal a fresh round (StartDeal
-    /// resets zones, refills, cursor, dish and deck), refresh the HUD, then
-    /// reveal the fresh round. No START return.
+    /// Round end (runs behind the black cover): load the configured next scene.
+    /// The fresh scene instance AUTO-STARTS (Start → StartGame → FadeIn reveal
+    /// → StartDeal), so no in-memory reset is needed. Falls back to the
+    /// currently active scene's name when nextSceneName is null/empty.
     /// </summary>
-    void ResetRound()
+    void LoadNextScene()
     {
-        _roundActive = true;
-        _lives = MaxLives();
-        _patience = MaxPatience();
-        playerView?.ResetToIdle();
-        enemyView?.ResetToIdle();
-        if (handController != null) handController.StartDeal();
-        UpdateHUD();
-        FadeIn();
+        if (_loadingScene) return;
+        _loadingScene = true;
+        string sceneName = config != null && !string.IsNullOrEmpty(config.nextSceneName)
+            ? config.nextSceneName
+            : SceneManager.GetActiveScene().name;
+        SceneManager.LoadScene(sceneName);
     }
 
     /// <summary>
