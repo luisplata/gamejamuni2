@@ -141,7 +141,7 @@ public class GameLoopController : MonoBehaviour
     void WinRound()
     {
         _roundActive = false;
-        StartCoroutine(DelayedFade(ReactionShowDelay, LoadNextScene));
+        StartCoroutine(DelayedFade(ReactionShowDelay, () => LoadNextScene(true)));
     }
 
     /// <summary>
@@ -159,23 +159,42 @@ public class GameLoopController : MonoBehaviour
             _roundActive = false;
             playerView?.OnGameOver();
             enemyView?.PlayReaction(EnemyReaction.Eaten);
-            StartCoroutine(DelayedFade(ReactionShowDelay, LoadNextScene));
+            StartCoroutine(DelayedFade(ReactionShowDelay, () => LoadNextScene(false)));
         }
     }
 
     /// <summary>
-    /// Round end (runs behind the black cover): load the configured next scene.
+    /// Round end (runs behind the black cover): load the scene for the round
+    /// outcome. WIN: advance the run to the next level (bounded — a last-level
+    /// win loads Credits and NEVER writes an out-of-range index), then load the
+    /// Map; LOSE: reload the SAME level (index unchanged, map position kept).
+    /// Falls back to "Map"/"Prototype" when the config field is empty/null.
     /// The fresh scene instance AUTO-STARTS (Start → StartGame → FadeIn reveal
-    /// → StartDeal), so no in-memory reset is needed. Falls back to the
-    /// currently active scene's name when nextSceneName is null/empty.
+    /// → StartDeal), so no in-memory reset is needed.
     /// </summary>
-    void LoadNextScene()
+    void LoadNextScene(bool won)
     {
         if (_loadingScene) return;
         _loadingScene = true;
-        string sceneName = config != null && !string.IsNullOrEmpty(config.nextSceneName)
-            ? config.nextSceneName
-            : SceneManager.GetActiveScene().name;
+        string sceneName;
+        if (won)
+        {
+            int lastLevel = handController != null ? handController.LevelCount - 1 : 0;
+            if (GameSession.currentLevelIndex < lastLevel)
+            {
+                GameSession.currentLevelIndex++; // never writes index 2
+                sceneName = config != null && !string.IsNullOrEmpty(config.nextSceneName)
+                    ? config.nextSceneName
+                    : "Map";
+            }
+            else sceneName = "Credits"; // last level won → credits, index stays
+        }
+        else
+        {
+            sceneName = config != null && !string.IsNullOrEmpty(config.nextSceneOnLose)
+                ? config.nextSceneOnLose
+                : "Prototype";
+        }
         SceneManager.LoadScene(sceneName);
     }
 

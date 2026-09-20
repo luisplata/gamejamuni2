@@ -15,4 +15,5 @@ MonoBehaviour:
   maxLives: 3
   maxPatience: 3
   fadeDuration: 1
-  nextSceneName: Prototype
+  nextSceneName: Map
+  nextSceneOnLose: Prototype

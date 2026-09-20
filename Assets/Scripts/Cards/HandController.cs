@@ -70,6 +70,9 @@ public class HandController : MonoBehaviour
     /// <summary>The current level's config — the enemy identity for the game loop (levelName + recipes).</summary>
     public LevelConfig CurrentLevel => currentLevel;
 
+    /// <summary>Number of levels in the recipe database (last-level check for the game-flow win routing).</summary>
+    public int LevelCount => recipeDatabase != null ? recipeDatabase.levels.Count : 0;
+
     /// <summary>
     /// The live dish result card (null between cooks). Exposed so the game loop
     /// can trigger the per-kind serve reaction AFTER resolution, when the dish
@@ -200,6 +203,21 @@ public class HandController : MonoBehaviour
         // them onto the full fan (SetSlot no-ops if already in place).
         for (int i = 0; i < existing; i++)
             _cards[i].SetSlot(i);
+    }
+
+    /// <summary>
+    /// Level pick-up from the run session: the same Prototype scene serves both
+    /// levels, so Awake selects the level via GameSession.currentLevelIndex
+    /// (0 = México, 1 = Colombia, 0-based into RecipeDatabase.levels).
+    /// Bounds-guarded — an out-of-range index keeps the serialized currentLevel
+    /// so standalone Prototype testing still works.
+    /// </summary>
+    void Awake()
+    {
+        if (recipeDatabase != null
+            && GameSession.currentLevelIndex >= 0
+            && GameSession.currentLevelIndex < recipeDatabase.levels.Count)
+            currentLevel = recipeDatabase.levels[GameSession.currentLevelIndex];
     }
 
     /// <summary>
