@@ -114,6 +114,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           lfs: true
+          # Full history + tags so unity-builder's Semantic versioning derives the exe
+          # version from the release tag (without these the built exe reports 0.1.0).
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Create LFS file list
         run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
@@ -128,6 +132,11 @@ jobs:
       - name: Git LFS Pull
         run: git lfs pull
 
+      - name: Clean LFS pull side effects
+        run: |
+          git add .
+          git reset --hard
+
       - uses: actions/cache@v4
         with:
           path: Library
@@ -136,8 +145,18 @@ jobs:
             Library-StandaloneWindows64-
             Library-
 
+      # IL2CPP crash fallback chain — execute IN ORDER only after an AS-IS re-run with the
+      # diagnostics step below captures the REAL error (do NOT preempt; diagnostics first):
+      #   1. Re-run AS-IS (pin v4.8.2 + diagnostics) — mandatory first step.
+      #   2. customImage: unityci/editor:windows-6000.3.10f1-windows-il2cpp-2 (same editor,
+      #      older image revision — NOT a downgrade; verify tag exists on hub.docker.com/r/unityci/editor).
+      #   3. If `-2` absent/fails: newest windows-6000.3.10f1-windows-il2cpp-* revision other than `-3`.
+      #   4. If no 6000.3.10f1 il2cpp image works: STOP — editor downgrade requires user approval.
+      #   5. Last resort DIAGNOSTIC-ONLY: -windows-mono-3 image to isolate IL2CPP-toolchain vs
+      #      project-content; produces a Mono exe — revert to IL2CPP immediately after.
+      # IL2CPP stays permanent. v4.8.2 auto-mounts VS + Windows SDK on windows-2022 by default.
       - name: Build Windows
-        uses: game-ci/unity-builder@v4
+        uses: game-ci/unity-builder@v4.8.2
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
@@ -148,6 +167,21 @@ jobs:
           targetPlatform: StandaloneWindows64
           buildName: GameJamUni2-Windows
           buildsPath: build
+
+      # Known crash signature so far: exit 255, EMPTY build output, and a suppressed
+      # "CreateDirectory '.../Unity/Caches' failed" user-profile error (hidden by
+      # `-logfile -` + `-silent-crashes`). Upload Unity logs + crash dumps on failure.
+      - name: Upload build diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-diagnostics-${{ github.run_id }}
+          path: |
+            Library/Logs/
+            Logs/
+            build/
+          retention-days: 7
+          if-no-files-found: warn
 
       - name: Strip DoNotShip folders
         shell: pwsh
