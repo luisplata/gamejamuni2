@@ -42,6 +42,9 @@ public class GameLoopController : MonoBehaviour
     [Tooltip("HUD label showing enemy patience (e.g. 'PACIENCIA: 3').")]
     [SerializeField] TMP_Text patienceText;
 
+    [Tooltip("HUD label showing the run's coins (e.g. 'MONEDAS: 15'). Null = no-op.")]
+    [SerializeField] TMP_Text coinsText;
+
     [Tooltip("World-space player view (idle + one-shot anims). Null = no-op.")]
     [SerializeField] PlayerView playerView;
 
@@ -111,6 +114,7 @@ public class GameLoopController : MonoBehaviour
                 handController?.LiveDish?.PlayReaction(result.Value.Kind);
                 playerView?.OnWin();
                 enemyView?.PlayReaction(EnemyReaction.Win, result.Value.Reaction);
+                GrantCoins(result.Value.Kind);
                 WinRound();
                 break;
 
@@ -137,11 +141,26 @@ public class GameLoopController : MonoBehaviour
         }
     }
 
-    /// <summary>Round won: stop input, cover to black, then load the next scene.</summary>
+    /// <summary>
+    /// Round won: stop input, cover to black, then load the next scene.
+    /// </summary>
     void WinRound()
     {
         _roundActive = false;
         StartCoroutine(DelayedFade(ReactionShowDelay, () => LoadNextScene(true)));
+    }
+
+    /// <summary>
+    /// Coin grant on a round win: Normal (green) +coinsNormal, Star (gold)
+    /// +coinsStar, falling back to 10/15 when the config is unwired. Runs
+    /// BEFORE the fade so the MONEDAS HUD shows the updated balance.
+    /// </summary>
+    void GrantCoins(RecipeKind kind)
+    {
+        GameSession.coins += kind == RecipeKind.Star
+            ? (config != null ? config.coinsStar : 15)
+            : (config != null ? config.coinsNormal : 10);
+        UpdateHUD();
     }
 
     /// <summary>
@@ -185,15 +204,15 @@ public class GameLoopController : MonoBehaviour
                 GameSession.currentLevelIndex++; // never writes index 2
                 sceneName = config != null && !string.IsNullOrEmpty(config.nextSceneName)
                     ? config.nextSceneName
-                    : "Map";
+                    : Scenes.Map;
             }
-            else sceneName = "Credits"; // last level won → credits, index stays
+            else sceneName = Scenes.Credits; // last level won → credits, index stays
         }
         else
         {
             sceneName = config != null && !string.IsNullOrEmpty(config.nextSceneOnLose)
                 ? config.nextSceneOnLose
-                : "Prototype";
+                : Scenes.Prototype;
         }
         SceneManager.LoadScene(sceneName);
     }
@@ -208,11 +227,12 @@ public class GameLoopController : MonoBehaviour
         FadeOut(onComplete);
     }
 
-    /// <summary>Refreshes the VIDAS / PACIENCIA HUD labels (no-op when unwired).</summary>
+    /// <summary>Refreshes the VIDAS / PACIENCIA / MONEDAS HUD labels (no-op when unwired).</summary>
     void UpdateHUD()
     {
         if (livesText != null) livesText.text = $"VIDAS: {_lives}";
         if (patienceText != null) patienceText.text = $"PACIENCIA: {_patience}";
+        if (coinsText != null) coinsText.text = $"MONEDAS: {GameSession.coins}";
     }
 
     void FadeIn(Action onComplete = null)

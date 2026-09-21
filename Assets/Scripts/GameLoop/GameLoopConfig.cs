@@ -23,4 +23,10 @@ public class GameLoopConfig : ScriptableObject
 
     [Tooltip("Scene loaded on GAME OVER / LOSE (after the fade cover): retries the SAME level, so the map position is kept. Empty/null falls back to \"Prototype\".")]
     public string nextSceneOnLose = "Prototype";
+
+    [Tooltip("Coins granted on a Normal (green) win.")]
+    public int coinsNormal = 10;
+
+    [Tooltip("Coins granted on a Star (gold) win.")]
+    public int coinsStar = 15;
 }

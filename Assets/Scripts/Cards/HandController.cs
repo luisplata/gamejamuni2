@@ -87,10 +87,16 @@ public class HandController : MonoBehaviour
     /// </summary>
     public void StartDeal()
     {
-        // Shuffle happens HERE and only here: expand the parametrized deck and
-        // Fisher-Yates it into the draw order. Seeded (deck.RandomSeed >= 0)
-        // for reproducible debugging, unseeded otherwise.
+        // Shuffle happens HERE and only here: expand the parametrized deck, mix
+        // in the run's Market purchases, and Fisher-Yates it into the draw
+        // order. Seeded (deck.RandomSeed >= 0) for reproducible debugging,
+        // unseeded otherwise. purchasedCards are appended BEFORE the shuffle so
+        // they mix into the draw order like any other card.
         _drawOrder = deck != null ? deck.Expand() : null;
+        if (_drawOrder != null
+            && GameSession.purchasedCards != null
+            && GameSession.purchasedCards.Count > 0)
+            _drawOrder.AddRange(GameSession.purchasedCards);
         if (_drawOrder != null) ShuffleFisherYates(_drawOrder);
 
         _dealIndex = 0;
