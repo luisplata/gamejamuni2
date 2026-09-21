@@ -11,6 +11,11 @@ on:
           - patch
           - minor
           - major
+      buildAndroid:
+        description: 'Build the Android APK too (default true)'
+        required: false
+        default: true
+        type: boolean
 
 permissions: {}
 
@@ -228,9 +233,113 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
+  build-android:
+    name: Build Android
+    if: inputs.buildAndroid
+    needs: [validate]
+    runs-on: windows-2022
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      actions: write
+    env:
+      TAG: ${{ needs.validate.outputs.tag }}
+      SHA7: ${{ needs.validate.outputs.sha7 }}
+      UNITY_VERSION: 6000.3.10f1
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Create LFS file list
+        run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
+
+      - name: Restore LFS cache
+        uses: actions/cache@v4
+        id: lfs-cache
+        with:
+          path: .git/lfs
+          key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
+
+      - name: Git LFS Pull
+        run: git lfs pull
+
+      - name: Clean LFS pull side effects
+        run: |
+          git add .
+          git reset --hard
+
+      # CI-only: remove Unity AI Assistant packages (see build-windows for rationale).
+      - name: Remove AI Assistant packages (CI only)
+        shell: pwsh
+        run: |
+          $manifest = Get-Content "Packages/manifest.json" -Raw
+          $json = $manifest | ConvertFrom-Json
+          $json.dependencies.PSObject.Properties.Remove("com.unity.ai.assistant")
+          $json.dependencies.PSObject.Properties.Remove("com.unity.ai.inference")
+          $json | ConvertTo-Json -Depth 10 | Set-Content "Packages/manifest.json" -Encoding utf8
+          Write-Host "AI Assistant removed from CI manifest"
+          git add Packages/manifest.json Packages/packages-lock.json
+          git -c user.name="CI" -c user.email="ci@github.com" commit -m "ci: remove AI assistant for build" --allow-empty || true
+          git status --porcelain
+
+      - uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-Android-${{ hashFiles('.lfs-assets-id', 'Packages/packages-lock.json') }}-${{ github.run_id }}
+          restore-keys: |
+            Library-Android-
+            Library-
+
+      - name: Build Android
+        uses: game-ci/unity-builder@v4.8.2
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: .
+          unityVersion: ${{ env.UNITY_VERSION }}
+          targetPlatform: Android
+          buildName: GameJamUni2-Android
+          buildsPath: build
+          # Debug-signed APK (no release keystore yet). Add the ANDROID_KEYSTORE_* secrets
+          # and the androidKeystore* options below when publishing to the Play Store.
+          androidExportType: androidPackage
+          customImage: unityci/editor:windows-6000.3.10f1-windows-il2cpp-3.2.2
+
+      - name: Upload build diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-build-diagnostics-${{ github.run_id }}
+          path: |
+            Library/Logs/
+            Logs/
+            build/
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Package Android
+        shell: pwsh
+        run: |
+          $asset = "GameJamUni2-Android-${env:TAG}-${env:SHA7}.zip"
+          Compress-Archive -Path "build/Android/*" -DestinationPath $asset -Force
+          Get-ChildItem $asset | Format-List Length,Name
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GameJamUni2-Android-${{ needs.validate.outputs.sha7 }}
+          path: GameJamUni2-Android-*.zip
+          retention-days: 1
+          if-no-files-found: error
+
   publish:
     name: Publish GitHub Release
-    needs: [build-windows, validate]
+    needs: [build-windows, build-android, validate]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -245,12 +354,16 @@ jobs:
           pattern: GameJamUni2-*
           merge-multiple: true
 
-      - name: Verify Windows asset is present
+      - name: Verify release assets present
         run: |
           set -euo pipefail
           ls -lh release-assets/
           if [ -z "$(find release-assets -maxdepth 1 -name "GameJamUni2-Windows-*.zip" -print -quit)" ]; then
             echo "::error::Missing release asset for Windows — refusing to publish."
+            exit 1
+          fi
+          if [ "${{ inputs.buildAndroid }}" = "true" ] && [ -z "$(find release-assets -maxdepth 1 -name "GameJamUni2-Android-*.zip" -print -quit)" ]; then
+            echo "::error::Missing release asset for Android — refusing to publish."
             exit 1
           fi
 
