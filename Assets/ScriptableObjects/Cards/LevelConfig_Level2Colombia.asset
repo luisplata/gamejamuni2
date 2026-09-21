@@ -22,3 +22,11 @@ MonoBehaviour:
   - {fileID: 11400000, guid: f166cd7d3bb4aa74790c8ed5b8b8c8e0, type: 2}
   - {fileID: 11400000, guid: 9f8fe92f50711224ab2709f48d2f3c1e, type: 2}
   - {fileID: 11400000, guid: 7a55d3d1a4701ba4e8153f49482e7c84, type: 2}
+  legendTitle: "El Hombre Caim\xE1n"
+  legendText: "El Hombre Caim\xE1n es la leyenda de un pescador del r\xEDo Magdalena
+    que, para espiar a las mujeres que se ba\xF1aban, se unt\xF3 un ung\xFCento que
+    lo convert\xEDa en caim\xE1n. El hechizo sali\xF3 mal y qued\xF3 atrapado a medias:
+    hombre de la cintura para arriba, caim\xE1n de la cintura para abajo. Dicen que
+    a\xFAn hoy emerge del r\xEDo buscando la f\xF3rmula para volver a ser humano."
+  audioNarration: {fileID: 0}
+  marketConfig: {fileID: 11400000, guid: 0fe04d7f59bbe0d42992747c1e32c974, type: 2}

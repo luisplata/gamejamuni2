@@ -22,3 +22,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: f10e0b773118f02469cf999c4fed516b, type: 2}
   - {fileID: 11400000, guid: 065aa033beaff124bb4e696f874ed56a, type: 2}
   - {fileID: 11400000, guid: 2811a3305d09014489c295006d34f3e2, type: 2}
+  legendTitle: El Ahuizotl
+  legendText: "El Ahuizotl es una criatura de la mitolog\xEDa mexica que habita r\xEDos
+    y lagunas. De aspecto de peque\xF1o perro, remata su cola con una mano que usa
+    para atrapar a quien se acerca a la orilla. Las leyendas cuentan que arrastra
+    a sus v\xEDctimas al fondo del agua para devorarlas."
+  audioNarration: {fileID: 0}
+  marketConfig: {fileID: 11400000, guid: fc3db025d8178a94ab9c35b0d98f9e40, type: 2}
