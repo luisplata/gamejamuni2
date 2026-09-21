@@ -237,7 +237,9 @@ jobs:
     name: Build Android
     if: inputs.buildAndroid
     needs: [validate]
-    runs-on: windows-2022
+    # Android builds run on ubuntu (per game-ci docs: Linux-based platforms incl. Android).
+    # The Linux images are also the stable ones — they avoid the Windows-container issues.
+    runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:
       contents: read
@@ -273,15 +275,21 @@ jobs:
           git reset --hard
 
       # CI-only: remove Unity AI Assistant packages (see build-windows for rationale).
+      # Uses python3 (available on ubuntu) to edit the JSON manifest.
       - name: Remove AI Assistant packages (CI only)
-        shell: pwsh
+        shell: bash
         run: |
-          $manifest = Get-Content "Packages/manifest.json" -Raw
-          $json = $manifest | ConvertFrom-Json
-          $json.dependencies.PSObject.Properties.Remove("com.unity.ai.assistant")
-          $json.dependencies.PSObject.Properties.Remove("com.unity.ai.inference")
-          $json | ConvertTo-Json -Depth 10 | Set-Content "Packages/manifest.json" -Encoding utf8
-          Write-Host "AI Assistant removed from CI manifest"
+          python3 - <<'EOF'
+          import json
+          p = "Packages/manifest.json"
+          with open(p) as f:
+              data = json.load(f)
+          data["dependencies"].pop("com.unity.ai.assistant", None)
+          data["dependencies"].pop("com.unity.ai.inference", None)
+          with open(p, "w") as f:
+              json.dump(data, f, indent=2)
+          print("AI Assistant removed from CI manifest")
+          EOF
           git add Packages/manifest.json Packages/packages-lock.json
           git -c user.name="CI" -c user.email="ci@github.com" commit -m "ci: remove AI assistant for build" --allow-empty || true
           git status --porcelain
@@ -309,9 +317,8 @@ jobs:
           # Debug-signed APK (no release keystore yet). Add the ANDROID_KEYSTORE_* secrets
           # and the androidKeystore* options below when publishing to the Play Store.
           androidExportType: androidPackage
-          # IMPORTANT: the ANDROID image (with the Android module + SDK), NOT the Windows
-          # il2cpp image — using the wrong one fails with "build target was unsupported".
-          customImage: unityci/editor:windows-6000.3.10f1-android-3.2.2
+          # The LINUX android image (ubuntu runner) — NOT the Windows one.
+          customImage: unityci/editor:ubuntu-6000.3.10f1-android-3.2.2
 
       - name: Upload build diagnostics on failure
         if: failure()
@@ -326,11 +333,11 @@ jobs:
           if-no-files-found: warn
 
       - name: Package Android
-        shell: pwsh
+        shell: bash
         run: |
-          $asset = "GameJamUni2-Android-${env:TAG}-${env:SHA7}.zip"
-          Compress-Archive -Path "build/Android/*" -DestinationPath $asset -Force
-          Get-ChildItem $asset | Format-List Length,Name
+          asset="GameJamUni2-Android-${TAG}-${SHA7}.zip"
+          (cd build/Android && zip -qr ../../"${asset}" .)
+          ls -lh "${asset}"
 
       - uses: actions/upload-artifact@v4
         with:
