@@ -309,7 +309,9 @@ jobs:
           # Debug-signed APK (no release keystore yet). Add the ANDROID_KEYSTORE_* secrets
           # and the androidKeystore* options below when publishing to the Play Store.
           androidExportType: androidPackage
-          customImage: unityci/editor:windows-6000.3.10f1-windows-il2cpp-3.2.2
+          # IMPORTANT: the ANDROID image (with the Android module + SDK), NOT the Windows
+          # il2cpp image — using the wrong one fails with "build target was unsupported".
+          customImage: unityci/editor:windows-6000.3.10f1-android-3.2.2
 
       - name: Upload build diagnostics on failure
         if: failure()
