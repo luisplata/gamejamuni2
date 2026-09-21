@@ -126,9 +126,13 @@ public class MapController : MonoBehaviour
         }
     }
 
-    /// <summary>JUGAR: start the current level. The game scene picks the level from GameSession.</summary>
+    /// <summary>
+    /// JUGAR: start the current level's pipeline — Legend (lore) → Market
+    /// (catalog) → Prototype. The game scene picks the level from GameSession.
+    /// This is the ONLY entry-side routing change of the pipeline.
+    /// </summary>
     public void PlayLevel()
     {
-        SceneManager.LoadScene("Prototype");
+        SceneManager.LoadScene(Scenes.Legend);
     }
 }

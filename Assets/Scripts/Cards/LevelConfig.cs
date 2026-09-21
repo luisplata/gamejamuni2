@@ -21,4 +21,17 @@ public class LevelConfig : ScriptableObject
 
     [Tooltip("Exact recipes resolvable in this level (Star + Normal only).")]
     public List<RecipeData> recipes;
+
+    [Tooltip("Legend scene title (e.g. 'El Ahuizotl').")]
+    public string legendTitle;
+
+    [Tooltip("Legend scene body text. Empty ⇒ the Legend scene is skipped (auto-forwards to Market).")]
+    [TextArea(3, 8)]
+    public string legendText;
+
+    [Tooltip("Optional narration clip played on the Legend scene. Null ⇒ silent.")]
+    public AudioClip audioNarration;
+
+    [Tooltip("Market catalog offered before this level. Null ⇒ Listo-only Market.")]
+    public MarketConfig marketConfig;
 }

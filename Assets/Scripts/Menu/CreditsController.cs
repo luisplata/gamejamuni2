@@ -24,6 +24,6 @@ public class CreditsController : MonoBehaviour
     /// <summary>VOLVER AL MENÚ: back to the boot scene (which starts a fresh run on JUGAR).</summary>
     public void GoToMenu()
     {
-        SceneManager.LoadScene("Menu");
+        SceneManager.LoadScene(Scenes.Menu);
     }
 }

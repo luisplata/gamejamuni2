@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2472696ce9182694681cbf52f963a056, type: 3}
+  m_Name: MarketConfig_Colombia
+  m_EditorClassIdentifier: Assembly-CSharp::MarketConfig
+  items:
+  - card: {fileID: 11400000, guid: 4cb21717343ee5644bd1eb5a95040d71, type: 2}
+    quantity: 1
+    price: 30
+  - card: {fileID: 11400000, guid: f6e55cbab93804244b660c9bdf0debd9, type: 2}
+    quantity: 2
+    price: 10
+  - card: {fileID: 11400000, guid: fd043c095273c4c419be52434a59ce2e, type: 2}
+    quantity: 2
+    price: 10
+  - card: {fileID: 11400000, guid: 6858fbbc96f0e214a90fc7fbb5b8610b, type: 2}
+    quantity: 2
+    price: 10

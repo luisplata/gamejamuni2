@@ -28,6 +28,6 @@ public class MenuController : MonoBehaviour
     public void StartRun()
     {
         GameSession.ResetRun();
-        SceneManager.LoadScene("Map");
+        SceneManager.LoadScene(Scenes.Map);
     }
 }

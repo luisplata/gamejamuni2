@@ -12,6 +12,12 @@ EditorBuildSettings:
     path: Assets/Scenes/Map.unity
     guid: 6cca563412718fc4d839383724691854
   - enabled: 1
+    path: Assets/Scenes/Legend.unity
+    guid: b14c9b0acc38b824c9c0804bed42264b
+  - enabled: 1
+    path: Assets/Scenes/Market.unity
+    guid: 9e280847a3e305a42a5acb072d83aff0
+  - enabled: 1
     path: Assets/Scenes/Prototype.unity
     guid: 0a85e26687c936548acff1986fa3f71d
   - enabled: 1
