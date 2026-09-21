@@ -167,6 +167,10 @@ jobs:
           targetPlatform: StandaloneWindows64
           buildName: GameJamUni2-Windows
           buildsPath: build
+          # IL2CPP container fix: the `-3` image for 6000.3.10f1 crashes natively (exit 255,
+          # broken container user profile — CreateDirectory Caches failed). Revision 3.2.x is
+          # newer and includes the container fixes (verified present on Docker Hub 2026-09-21).
+          customImage: unityci/editor:windows-6000.3.10f1-windows-il2cpp-3.2.2
 
       # Known crash signature so far: exit 255, EMPTY build output, and a suppressed
       # "CreateDirectory '.../Unity/Caches' failed" user-profile error (hidden by
