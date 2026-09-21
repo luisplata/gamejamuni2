@@ -137,6 +137,21 @@ jobs:
           git add .
           git reset --hard
 
+      # CI-only: remove Unity AI Assistant packages (com.unity.ai.assistant + com.unity.ai.inference)
+      # from the manifest. They are Editor-side packages that spawn a relay in the container and
+      # crash Unity during package import in CI (exit 255). They are NOT needed for headless builds
+      # and are independent of com.coplaydev.unity-mcp (the MCP bridge used locally). This edit
+      # happens only on the runner — the local project manifest is untouched.
+      - name: Remove AI Assistant packages (CI only)
+        shell: pwsh
+        run: |
+          $manifest = Get-Content "Packages/manifest.json" -Raw
+          $json = $manifest | ConvertFrom-Json
+          $json.dependencies.PSObject.Properties.Remove("com.unity.ai.assistant")
+          $json.dependencies.PSObject.Properties.Remove("com.unity.ai.inference")
+          $json | ConvertTo-Json -Depth 10 | Set-Content "Packages/manifest.json" -Encoding utf8
+          Write-Host "AI Assistant removed from CI manifest"
+
       - uses: actions/cache@v4
         with:
           path: Library
@@ -167,11 +182,10 @@ jobs:
           targetPlatform: StandaloneWindows64
           buildName: GameJamUni2-Windows
           buildsPath: build
-          # DIAGNOSTIC-ONLY: mono image to isolate IL2CPP-toolchain vs container/version.
-          # If mono ALSO crashes during package import → the 6000.3.10f1 container/version
-          # is the problem (not IL2CPP); revert to IL2CPP image afterwards. The -3 and -3.2.2
-          # il2cpp images both crash identically (exit 255, Caches CreateDirectory failed).
-          customImage: unityci/editor:windows-6000.3.10f1-windows-mono-3
+          # IL2CPP container fix: the `-3` image for 6000.3.10f1 crashes natively (exit 255,
+          # broken container user profile — CreateDirectory Caches failed). Revision 3.2.x is
+          # newer and includes the container fixes (verified present on Docker Hub 2026-09-21).
+          customImage: unityci/editor:windows-6000.3.10f1-windows-il2cpp-3.2.2
 
       # Known crash signature so far: exit 255, EMPTY build output, and a suppressed
       # "CreateDirectory '.../Unity/Caches' failed" user-profile error (hidden by
