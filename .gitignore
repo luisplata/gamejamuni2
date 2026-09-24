@@ -39,6 +39,16 @@ Assets/Screenshots/
 # Migration backup snapshot (remove once stable)
 Assets/ScriptableObjects/Cards/_Backup_*/
 
+# Editor scene backup (duplicate of Prototype, kept on disk only)
+Assets/_Recovery/
+Assets/_Recovery.meta
+
+# Local build/tooling output
+.utmp/
+
+# Empty Resources folder placeholder meta (regenerated if populated)
+Assets/Resources.meta
+
 # opencode tooling lock (machine-specific)
 skills-lock.json
 
