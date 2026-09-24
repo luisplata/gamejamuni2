@@ -29,6 +29,9 @@ public class TutorialController : MonoBehaviour
         public ZoneTarget pulse;
         public float minHold;
         public Func<bool> done;
+
+        /// <summary>Show the no-refills hint text while this step is active (trash step).</summary>
+        public bool noRefillsHint;
     }
 
     [SerializeField] HandController handController;
@@ -45,6 +48,23 @@ public class TutorialController : MonoBehaviour
     int _index;
     float _stepTime;
     bool _finished;
+
+    // Fix WARNING 2 (trash-step softlock): trash park + REFILL dump are observed
+    // at ANY step, not frame-locked to step 4. The corner drain edge (>=1 -> 0)
+    // only ever happens via Refill() consuming the trash zone, so it is a
+    // reliable "a refill was used" signal. maxRefillsPerGame is 2 in the shared
+    // CardVisualConfig (tutorial scene uses it), mirrored here for the hint.
+    const int MaxTutorialRefills = 2;
+    const string NoRefillsHint = "Sin refills, usa la cocina";
+    bool _sawTrash;
+    bool _sawRefillDump;
+    int _prevCornerCount;
+    int _refillDumps;
+
+    // Fix WARNING 3 (step-6 auto-advance): remember the dish instance present
+    // when the goal set parked; step 6 only completes on a NEW serve after that.
+    bool _goalParked;
+    DishView _dishWhenGoalParked;
 
     void Start()
     {
@@ -64,6 +84,8 @@ public class TutorialController : MonoBehaviour
     void Update()
     {
         if (_finished || _steps.Count == 0) return;
+        ObserveZones();
+        UpdateNoRefillsHint();
         _stepTime += Time.deltaTime;
         if (_steps[_index].done() && _stepTime >= _steps[_index].minHold)
         {
@@ -117,6 +139,7 @@ public class TutorialController : MonoBehaviour
             objective = "Tira una carta a la ZONA ROJA (basura) y pulsa REFILL",
             pulse = ZoneTarget.Corner,
             minHold = 0.4f,
+            noRefillsHint = true,
             done = TrashThenRefill
         });
 
@@ -135,19 +158,56 @@ public class TutorialController : MonoBehaviour
             objective = "Pulsa PREPARAR",
             pulse = ZoneTarget.None,
             minHold = 0.4f,
-            done = () => handController.LiveDish != null
+            done = ServedAfterGoalParked
         });
     }
 
-    /// <summary>Step 4: trash must be filled then dumped (REFILL) — saw-then-cleared.</summary>
-    bool TrashThenRefill()
+    /// <summary>
+    /// Every-frame zone observer (fix WARNING 2): tracks trash parks and REFILL
+    /// dumps globally so step 4 is not frame-locked to a park landing exactly
+    /// while it is active. A corner drain (count >= 1 -> 0) only ever happens
+    /// via Refill() consuming the trash zone (PrepareFood ignores the corner,
+    /// StartDeal only clears at game start), so it is a reliable "refill used"
+    /// signal.
+    /// </summary>
+    void ObserveZones()
     {
+        if (cornerZone == null) return;
         if (cornerZone.Count >= 1) _sawTrash = true;
-        return _sawTrash && cornerZone.Count == 0;
+        if (_prevCornerCount >= 1 && cornerZone.Count == 0)
+        {
+            _refillDumps++;
+            _sawRefillDump = true;
+        }
+        _prevCornerCount = cornerZone.Count;
     }
-    bool _sawTrash;
 
-    /// <summary>Step 5: the center cook queue is exactly the goal recipe's ingredient set.</summary>
+    /// <summary>
+    /// Step 4: a trash park was seen AND a REFILL dump was seen, at ANY step.
+    /// Burning refills before step 4 still means the dumps happened, so the step
+    /// can never softlock — every spent refill requires a trash park + dump.
+    /// </summary>
+    bool TrashThenRefill() => _sawTrash && _sawRefillDump;
+
+    /// <summary>
+    /// Fix WARNING 2 hint: while the trash step is active and both refills are
+    /// spent, swap the objective for a hint that the corner is closed. Defensive
+    /// fallback — with the global park/dump tracker the step normally completes
+    /// on the last dump before this can display.
+    /// </summary>
+    void UpdateNoRefillsHint()
+    {
+        if (objectiveLabel == null || _index >= _steps.Count) return;
+        if (!_steps[_index].noRefillsHint) return;
+        if (_refillDumps >= MaxTutorialRefills)
+            objectiveLabel.text = NoRefillsHint;
+    }
+
+    /// <summary>
+    /// Step 5: the center cook queue is exactly the goal recipe's ingredient set.
+    /// On the rising edge it records the dish present at parking time so step 6
+    /// can require a serve that happens AFTER the goal was parked.
+    /// </summary>
     bool GoalParked()
     {
         if (goalRecipe == null || goalRecipe.ingredients == null || goalRecipe.ingredients.Count == 0) return false;
@@ -155,7 +215,27 @@ public class TutorialController : MonoBehaviour
         var set = new HashSet<CardData>();
         foreach (var c in centerZone.Held)
             if (c != null && c.Data != null) set.Add(c.Data);
-        return set.SetEquals(goalRecipe.ingredients);
+        bool parked = set.SetEquals(goalRecipe.ingredients);
+        if (parked && !_goalParked)
+        {
+            _goalParked = true;
+            _dishWhenGoalParked = handController != null ? handController.LiveDish : null;
+        }
+        return parked;
+    }
+
+    /// <summary>
+    /// Step 6 (fix WARNING 3): a NEW serve happened after the goal set parked.
+    /// Every PREPARAR spawns a fresh DishView instance, so instance inequality
+    /// vs the dish present at parking time proves the player served AFTER
+    /// parking. A wrong dish cooked BEFORE parking stays the same instance and
+    /// does NOT auto-complete the step.
+    /// </summary>
+    bool ServedAfterGoalParked()
+    {
+        if (!_goalParked) return false;
+        var dish = handController != null ? handController.LiveDish : null;
+        return dish != null && !ReferenceEquals(dish, _dishWhenGoalParked);
     }
 
     string IngredientNames()
