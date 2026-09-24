@@ -13,6 +13,12 @@ public class MenuController : MonoBehaviour
     [SerializeField] FadeController fade;
 
     /// <summary>
+    /// Level the TUTORIAL button launches (La Llorona). Set BEFORE loading the
+    /// Tutorial scene so HandController.Awake picks it up (design D1).
+    /// </summary>
+    [SerializeField] LevelConfig tutorialConfig;
+
+    /// <summary>
     /// Intro reveal: black → transparent. Runs in Start so
     /// FadeController.Awake has already forced the overlay opaque first.
     /// </summary>
@@ -29,5 +35,19 @@ public class MenuController : MonoBehaviour
     {
         GameSession.ResetRun();
         SceneManager.LoadScene(Scenes.Map);
+    }
+
+    /// <summary>
+    /// TUTORIAL: fresh run state, then carry the tutorial level (La Llorona)
+    /// into the Tutorial scene BEFORE it loads — HandController.Awake overrides
+    /// its serialized level with GameSession.tutorialLevel, so ordering here is
+    /// what makes the tutorial teach the right enemy. JUGAR (StartRun) is
+    /// untouched: ResetRun clears tutorialLevel before any real run.
+    /// </summary>
+    public void StartTutorial()
+    {
+        GameSession.ResetRun();
+        GameSession.tutorialLevel = tutorialConfig;
+        SceneManager.LoadScene(Scenes.Tutorial);
     }
 }
