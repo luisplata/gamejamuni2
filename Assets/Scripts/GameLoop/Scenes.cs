@@ -12,4 +12,5 @@ public static class Scenes
     public const string Market = "Market";
     public const string Prototype = "Prototype";
     public const string Credits = "Credits";
+    public const string Tutorial = "Tutorial";
 }

@@ -26,6 +26,14 @@ public static class GameSession
     /// <summary>Cards already bought this run — one purchase per item per run (rebuy blocked).</summary>
     public static HashSet<CardData> soldOut = new();
 
+    /// <summary>
+    /// Tutorial override level: when non-null, HandController.Awake picks this
+    /// instead of the RecipeDatabase level (design D1). Set by MenuController
+    /// BEFORE loading the Tutorial scene; cleared by ResetRun so a real run
+    /// never inherits the tutorial identity.
+    /// </summary>
+    public static LevelConfig tutorialLevel;
+
     /// <summary>Fresh run: back to México with an empty wallet and no purchases.</summary>
     public static void ResetRun()
     {
@@ -33,5 +41,6 @@ public static class GameSession
         coins = 0;
         purchasedCards = new List<CardData>();
         soldOut = new HashSet<CardData>();
+        tutorialLevel = null;
     }
 }

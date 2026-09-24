@@ -55,6 +55,16 @@ public class EnemyView : MonoBehaviour
         ShowBubble(Pick(category, null));
     }
 
+    /// <summary>
+    /// Scripted narration: shows <paramref name="phrase"/> in the bubble without
+    /// any animation trigger or phrase-pool pick (design D2). Used by the
+    /// tutorial's step ladder for exact, ordered dialogue.
+    /// </summary>
+    public void Say(string phrase)
+    {
+        ShowBubble(phrase);
+    }
+
     /// <summary>Hard-returns to Idle, guarding interrupted one-shots (called behind the round-end fade).</summary>
     public void ResetToIdle()
     {

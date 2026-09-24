@@ -220,6 +220,14 @@ public class HandController : MonoBehaviour
     /// </summary>
     void Awake()
     {
+        // Tutorial override (design D1): a live GameSession.tutorialLevel beats
+        // the database pick, so the Tutorial scene can teach La Llorona without
+        // touching the run's level index. ResetRun clears it before real runs.
+        if (GameSession.tutorialLevel != null)
+        {
+            currentLevel = GameSession.tutorialLevel;
+            return;
+        }
         if (recipeDatabase != null
             && GameSession.currentLevelIndex >= 0
             && GameSession.currentLevelIndex < recipeDatabase.levels.Count)
