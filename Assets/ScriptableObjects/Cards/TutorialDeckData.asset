@@ -37,4 +37,4 @@ MonoBehaviour:
     count: 2
   - card: {fileID: 11400000, guid: 5bbbeb30845991d4180e60489d962b33, type: 2}
     count: 2
-  randomSeed: -1
+  randomSeed: 31
