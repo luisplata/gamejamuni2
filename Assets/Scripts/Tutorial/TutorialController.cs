@@ -20,6 +20,9 @@ public class TutorialController : MonoBehaviour
     /// <summary>Which zone to pulse when a step advances (visual hint).</summary>
     enum ZoneTarget { None, Center, Corner }
 
+    /// <summary>Which gameplay condition gates a step (maps a StepConfig to a code check).</summary>
+    enum StepType { Welcome, RoleColors, CookZone, TrashRefill, GoalPark, Serve }
+
     /// <summary>One ladder rung: narration + objective + pulse + hold + gameplay condition.</summary>
     [Serializable]
     class Step
@@ -34,6 +37,24 @@ public class TutorialController : MonoBehaviour
         public bool noRefillsHint;
     }
 
+    /// <summary>
+    /// One Inspector-editable ladder rung. <see cref="objective"/> empty means
+    /// "use the goal line" (_goalLine) — the default for the welcome and goal
+    /// steps. <see cref="type"/> selects the gameplay condition in BuildSteps().
+    /// </summary>
+    [Serializable]
+    class StepConfig
+    {
+        public string text;
+        [Tooltip("Tiempo mínimo en pantalla (segundos) antes de poder avanzar")]
+        public float minHold;
+        [Tooltip("Dejar vacío usa el objetivo del plato (Objetivo: ...)")]
+        public string objective;
+        public ZoneTarget pulse;
+        public bool noRefillsHint;
+        public StepType type;
+    }
+
     [SerializeField] HandController handController;
     [SerializeField] EnemyView enemyView;
     [SerializeField] DropZone centerZone;
@@ -42,6 +63,9 @@ public class TutorialController : MonoBehaviour
     [SerializeField] Image cornerImage;
     [SerializeField] TMP_Text objectiveLabel;
     [SerializeField] RecipeData goalRecipe;
+
+    /// <summary>Editable step ladder (Inspector). Defaults to the 6 authored steps.</summary>
+    [SerializeField] StepConfig[] steps = DefaultStepConfigs();
 
     readonly List<Step> _steps = new();
     string _goalLine;
@@ -106,60 +130,93 @@ public class TutorialController : MonoBehaviour
 
     void BuildSteps()
     {
-        _steps.Add(new Step
-        {
-            text = "Bienvenido, cocinero. Soy la Llorona y tengo antojo de TACOS DE CHAPULINES. Te enseño a prepararlos.",
-            objective = _goalLine,
-            pulse = ZoneTarget.None,
-            minHold = 2.5f,
-            done = () => true
-        });
+        // Defensive: if the Inspector ladder is missing/empty, fall back to the
+        // authored defaults so the tutorial never breaks on missing data.
+        var configs = steps != null && steps.Length > 0 ? steps : DefaultStepConfigs();
+        _steps.Clear();
+        foreach (var cfg in configs)
+            if (cfg != null) _steps.Add(MakeStep(cfg));
+    }
 
-        _steps.Add(new Step
+    /// <summary>
+    /// Maps one Inspector StepConfig onto the internal step record, resolving
+    /// the empty-objective goal-line fallback and the per-type gameplay check.
+    /// </summary>
+    Step MakeStep(StepConfig cfg)
+    {
+        Func<bool> done = cfg.type switch
         {
-            text = "Mira el color de cada carta: ROJO es base, VERDE es complemento y AMARILLO es sazón. Lleva cualquier carta a una zona.",
-            objective = "Arrastra una carta a la ZONA AZUL (cocina) o a la ZONA ROJA (basura)",
-            pulse = ZoneTarget.None,
-            minHold = 0.4f,
-            done = () => centerZone.Count + cornerZone.Count >= 1
-        });
+            StepType.RoleColors => () => centerZone.Count + cornerZone.Count >= 1,
+            StepType.CookZone => () => centerZone.Count >= 1,
+            StepType.TrashRefill => TrashThenRefill,
+            StepType.GoalPark => GoalParked,
+            StepType.Serve => ServedAfterGoalParked,
+            _ => () => true // Welcome
+        };
+        return new Step
+        {
+            text = cfg.text,
+            objective = string.IsNullOrEmpty(cfg.objective) ? _goalLine : cfg.objective,
+            pulse = cfg.pulse,
+            minHold = cfg.minHold,
+            noRefillsHint = cfg.noRefillsHint,
+            done = done
+        };
+    }
 
-        _steps.Add(new Step
+    /// <summary>
+    /// The 6-step tutorial ladder authored here as editable defaults: same texts
+    /// and timings as before (2.5s welcome, 0.4s the rest; steps 1 &amp; 5 use the
+    /// goal-line fallback via empty objective). The Inspector overrides these.
+    /// </summary>
+    static StepConfig[] DefaultStepConfigs()
+    {
+        return new[]
         {
-            text = "La ZONA AZUL es la COCINA: ahí se arma el plato con hasta 3 cartas.",
-            objective = "Coloca una carta en la ZONA AZUL (cocina)",
-            pulse = ZoneTarget.Center,
-            minHold = 0.4f,
-            done = () => centerZone.Count >= 1
-        });
-
-        _steps.Add(new Step
-        {
-            text = "La ZONA ROJA es la BASURA. Tira una carta que no uses y pulsa REFILL para descartarla y llenar tu mano. ¡Los refills son limitados!",
-            objective = "Tira una carta a la ZONA ROJA (basura) y pulsa REFILL",
-            pulse = ZoneTarget.Corner,
-            minHold = 0.4f,
-            noRefillsHint = true,
-            done = TrashThenRefill
-        });
-
-        _steps.Add(new Step
-        {
-            text = "Ahora arma el plato que te pedí. Solo se cocinan 3 cartas exactas.",
-            objective = _goalLine,
-            pulse = ZoneTarget.None,
-            minHold = 0.4f,
-            done = GoalParked
-        });
-
-        _steps.Add(new Step
-        {
-            text = "¡Perfecto! Cuando el plato esté listo, pulsa PREPARAR para cocinarlo.",
-            objective = "Pulsa PREPARAR",
-            pulse = ZoneTarget.None,
-            minHold = 0.4f,
-            done = ServedAfterGoalParked
-        });
+            new StepConfig
+            {
+                type = StepType.Welcome,
+                text = "Bienvenido, cocinero. Soy la Llorona y tengo antojo de TACOS DE CHAPULINES. Te enseño a prepararlos.",
+                minHold = 2.5f
+            },
+            new StepConfig
+            {
+                type = StepType.RoleColors,
+                text = "Mira el color de cada carta: ROJO es base, VERDE es complemento y AMARILLO es sazón. Lleva cualquier carta a una zona.",
+                objective = "Arrastra una carta a la ZONA AZUL (cocina) o a la ZONA ROJA (basura)",
+                minHold = 0.4f
+            },
+            new StepConfig
+            {
+                type = StepType.CookZone,
+                text = "La ZONA AZUL es la COCINA: ahí se arma el plato con hasta 3 cartas.",
+                objective = "Coloca una carta en la ZONA AZUL (cocina)",
+                pulse = ZoneTarget.Center,
+                minHold = 0.4f
+            },
+            new StepConfig
+            {
+                type = StepType.TrashRefill,
+                text = "La ZONA ROJA es la BASURA. Tira una carta que no uses y pulsa REFILL para descartarla y llenar tu mano. ¡Los refills son limitados!",
+                objective = "Tira una carta a la ZONA ROJA (basura) y pulsa REFILL",
+                pulse = ZoneTarget.Corner,
+                minHold = 0.4f,
+                noRefillsHint = true
+            },
+            new StepConfig
+            {
+                type = StepType.GoalPark,
+                text = "Ahora arma el plato que te pedí. Solo se cocinan 3 cartas exactas.",
+                minHold = 0.4f
+            },
+            new StepConfig
+            {
+                type = StepType.Serve,
+                text = "¡Perfecto! Cuando el plato esté listo, pulsa PREPARAR para cocinarlo.",
+                objective = "Pulsa PREPARAR",
+                minHold = 0.4f
+            }
+        };
     }
 
     /// <summary>
