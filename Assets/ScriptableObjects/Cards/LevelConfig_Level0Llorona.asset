@@ -21,4 +21,4 @@ MonoBehaviour:
   legendText: "Una mujer vestida de blanco llora junto al r\xEDo. Dicen que busca
     a sus hijos... y que cocina para calmar su pena."
   audioNarration: {fileID: 0}
-  marketConfig: {fileID: 0}
+  marketConfig: {fileID: 11400000, guid: bb2d8130988947009b46cda685da0cec, type: 2}
