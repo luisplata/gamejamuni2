@@ -26,6 +26,12 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Tutorial.unity
     guid: 32b853be5a0753e4fb14bd29b0ec51da
+  - enabled: 1
+    path: Assets/Scenes/TutorialLegend.unity
+    guid: 58a3663551874e844861650f797b8f3f
+  - enabled: 1
+    path: Assets/Scenes/TutorialMarket.unity
+    guid: 0f8ed2721c1cc8e4a8e545598cd9155b
   m_configObjects:
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
