@@ -13,4 +13,6 @@ public static class Scenes
     public const string Prototype = "Prototype";
     public const string Credits = "Credits";
     public const string Tutorial = "Tutorial";
+    public const string TutorialLegend = "TutorialLegend";
+    public const string TutorialMarket = "TutorialMarket";
 }

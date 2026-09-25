@@ -29,6 +29,13 @@ public class MarketController : MonoBehaviour
     [Tooltip("Full-screen black overlay; the market reveals behind the fade-in.")]
     [SerializeField] FadeController fade;
 
+    /// <summary>
+    /// Scene loaded by LISTO. The real Market routes to Prototype; the tutorial
+    /// copy (TutorialMarket) overrides this to Tutorial so the guided chain
+    /// keeps moving into the coached match.
+    /// </summary>
+    [SerializeField] string nextScene = Scenes.Prototype;
+
     /// <summary>Spawned buy button per catalog item (Refresh() toggles each one's interactable state).</summary>
     readonly Dictionary<MarketConfig.MarketItem, Button> _buttons = new();
 
@@ -50,10 +57,10 @@ public class MarketController : MonoBehaviour
         if (fade != null) fade.FadeIn();
     }
 
-    /// <summary>LISTO: leave the Market and start the level in Prototype.</summary>
+    /// <summary>LISTO: leave the Market and start the level in nextScene (Prototype by default).</summary>
     public void Done()
     {
-        SceneManager.LoadScene(Scenes.Prototype);
+        SceneManager.LoadScene(nextScene);
     }
 
     /// <summary>
@@ -114,9 +121,18 @@ public class MarketController : MonoBehaviour
         }
     }
 
-    /// <summary>Current level's MarketConfig, bounds-guarded (null when unwired/out of range).</summary>
+    /// <summary>
+    /// Current level's MarketConfig, bounds-guarded (null when unwired/out of
+    /// range). Tutorial override (design D1, same as HandController.Awake): a
+    /// live GameSession.tutorialLevel beats the database pick, so the tutorial
+    /// chain shows the tutorial catalog (Llorona's marketConfig) instead of the
+    /// RecipeDatabase level's market. ResetRun clears it before real runs, so
+    /// the real flow is untouched.
+    /// </summary>
     MarketConfig CurrentMarket()
     {
+        if (GameSession.tutorialLevel != null)
+            return GameSession.tutorialLevel.marketConfig;
         if (database == null || database.levels == null) return null;
         int index = GameSession.currentLevelIndex;
         if (index < 0 || index >= database.levels.Count) return null;

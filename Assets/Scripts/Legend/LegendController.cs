@@ -24,8 +24,15 @@ public class LegendController : MonoBehaviour
     [SerializeField] FadeController fade;
 
     /// <summary>
+    /// Scene loaded by CONTINUAR (and by the empty-legend auto-forward). The
+    /// real Legend routes to the Market; the tutorial copy (TutorialLegend)
+    /// overrides this to TutorialMarket so the guided chain keeps moving.
+    /// </summary>
+    [SerializeField] string nextScene = Scenes.Market;
+
+    /// <summary>
     /// Reads the current level's legend. Empty legendText → immediately loads
-    /// the Market (no legend UI shown, no null-ref). Otherwise fills the TMP
+    /// nextScene (no legend UI shown, no null-ref). Otherwise fills the TMP
     /// labels, plays narration if present (null-safe), and fades in.
     /// </summary>
     void Start()
@@ -33,7 +40,7 @@ public class LegendController : MonoBehaviour
         var level = CurrentLevel();
         if (level == null || string.IsNullOrEmpty(level.legendText))
         {
-            SceneManager.LoadScene(Scenes.Market);
+            SceneManager.LoadScene(nextScene);
             return;
         }
 
@@ -44,15 +51,23 @@ public class LegendController : MonoBehaviour
         if (fade != null) fade.FadeIn();
     }
 
-    /// <summary>CONTINUAR: proceed to the Market for this level.</summary>
+    /// <summary>CONTINUAR: proceed to nextScene (the Market for this level).</summary>
     public void Continue()
     {
-        SceneManager.LoadScene(Scenes.Market);
+        SceneManager.LoadScene(nextScene);
     }
 
-    /// <summary>Current level's config, bounds-guarded (null when unwired/out of range).</summary>
+    /// <summary>
+    /// Current level's config, bounds-guarded (null when unwired/out of range).
+    /// Tutorial override (design D1, same as HandController.Awake): a live
+    /// GameSession.tutorialLevel beats the database pick, so the tutorial chain
+    /// (Menu → TutorialLegend → TutorialMarket → Tutorial) shows La Llorona's
+    /// legend instead of the RecipeDatabase level. ResetRun clears it before
+    /// any real run, so the real flow is untouched.
+    /// </summary>
     LevelConfig CurrentLevel()
     {
+        if (GameSession.tutorialLevel != null) return GameSession.tutorialLevel;
         if (database == null || database.levels == null) return null;
         int index = GameSession.currentLevelIndex;
         if (index < 0 || index >= database.levels.Count) return null;
