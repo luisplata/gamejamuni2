@@ -81,6 +81,14 @@ public class HandController : MonoBehaviour
     public DishView LiveDish => _dishCard;
 
     /// <summary>
+    /// Kind of the last resolved cook (null until the first cook). Exposed so
+    /// the tutorial can observe a Presented (blue) resolution to advance its
+    /// patience-teaching step — the same global-observer pattern as its zone
+    /// tracking.
+    /// </summary>
+    public RecipeKind? LastResolutionKind { get; private set; }
+
+    /// <summary>
     /// START: clears both zone queues and the refill counter, destroys all
     /// existing hand cards, then deals a full hand (each card appears at the
     /// deal origin and animates to its parabola slot).
@@ -159,6 +167,7 @@ public class HandController : MonoBehaviour
 
         ClearDish();
         var result = RecipeResolver.Resolve(cooked, currentLevel, recipeDatabase);
+        LastResolutionKind = result.Kind;
         SpawnDish(result);
         playerView?.OnCook();
 
@@ -300,6 +309,13 @@ public class HandController : MonoBehaviour
         foreach (var card in zone.ReleaseAll())
             if (card != null) Destroy(card.gameObject);
     }
+
+    /// <summary>
+    /// Public clean-room for the cook queue: destroys every parked card in the
+    /// center zone (e.g. the tutorial's patience step starts from an empty
+    /// center so the step-3 prop card can't pollute the blue recipe match).
+    /// </summary>
+    public void ClearCookQueue() => ClearZone(centerZone);
 
     /// <summary>
     /// Parabola slot position for <paramref name="index"/> of <paramref name="count"/>

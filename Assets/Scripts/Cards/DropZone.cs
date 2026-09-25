@@ -8,7 +8,7 @@ using UnityEngine.UI;
 /// it. The dragged card sits under the pointer and would block zone raycasts,
 /// so detection is a pure position check against the zone rect (no raycast).
 /// A zone also HOLDS parked cards as a visible queue: Accept parks a card
-/// (capacity-checked against the config by kind), ReleaseAll detaches them
+/// (locked/capacity-checked against the config by kind), ReleaseAll detaches them
 /// for the consume flow, and GetParkedSlot lays out slots horizontally.
 /// </summary>
 public class DropZone : MonoBehaviour
@@ -19,10 +19,23 @@ public class DropZone : MonoBehaviour
     [SerializeField] CardVisualConfig config;
     [SerializeField] ZoneKind kind;
 
+    /// <summary>
+    /// Tutorial gating: when true, Accept() rejects every park so no card can
+    /// land here (e.g. the cook zone stays closed until the tutorial teaches
+    /// it). Serialized default false — Prototype and normal play are untouched.
+    /// </summary>
+    [SerializeField] bool locked;
+
     readonly List<CardView> held = new();
 
     /// <summary>Which queue this zone is (Center = cook, Corner = trash).</summary>
     public ZoneKind Kind => kind;
+
+    /// <summary>
+    /// Locks/unlocks this zone. While locked, Accept() rejects all parks (the
+    /// dropped card returns to the hand). Default false (unlocked).
+    /// </summary>
+    public bool Locked { get => locked; set => locked = value; }
 
     /// <summary>This zone's RectTransform (the hit-test geometry).</summary>
     public RectTransform Rect => (RectTransform)transform;
@@ -51,11 +64,11 @@ public class DropZone : MonoBehaviour
 
     /// <summary>
     /// Parks <paramref name="card"/> in this zone. False (no change) when the
-    /// zone is already at capacity — the caller rejects the drop.
+    /// zone is locked or already at capacity — the caller rejects the drop.
     /// </summary>
     public bool Accept(CardView card)
     {
-        if (held.Count >= MaxCount) return false;
+        if (locked || held.Count >= MaxCount) return false;
         held.Add(card);
         return true;
     }
