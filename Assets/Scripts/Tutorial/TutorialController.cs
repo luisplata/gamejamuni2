@@ -6,7 +6,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Scripted guided tutorial (Option A). Runs a 6-step ladder of
+/// Scripted guided tutorial (Option A). Runs a 7-step ladder of
 /// [text, objective, zone pulse, minHold, condition] records polled in Update:
 /// each step blocks until its gameplay condition holds (plus a minimum hold),
 /// then advances to the next narration. Built in Start — AFTER every Awake —
@@ -21,7 +21,7 @@ public class TutorialController : MonoBehaviour
     enum ZoneTarget { None, Center, Corner }
 
     /// <summary>Which gameplay condition gates a step (maps a StepConfig to a code check).</summary>
-    enum StepType { Welcome, RoleColors, CookZone, TrashRefill, GoalPark, Serve }
+    enum StepType { Welcome, RoleColors, CookZone, TrashRefill, LogicalDish, GoalPark, Serve }
 
     /// <summary>One ladder rung: narration + objective + pulse + hold + gameplay condition.</summary>
     [Serializable]
@@ -32,6 +32,7 @@ public class TutorialController : MonoBehaviour
         public ZoneTarget pulse;
         public float minHold;
         public Func<bool> done;
+        public StepType type;
 
         /// <summary>Show the no-refills hint text while this step is active (trash step).</summary>
         public bool noRefillsHint;
@@ -64,7 +65,7 @@ public class TutorialController : MonoBehaviour
     [SerializeField] TMP_Text objectiveLabel;
     [SerializeField] RecipeData goalRecipe;
 
-    /// <summary>Editable step ladder (Inspector). Defaults to the 6 authored steps.</summary>
+    /// <summary>Editable step ladder (Inspector). Defaults to the 7 authored steps.</summary>
     [SerializeField] StepConfig[] steps = DefaultStepConfigs();
 
     readonly List<Step> _steps = new();
@@ -90,6 +91,21 @@ public class TutorialController : MonoBehaviour
     bool _goalParked;
     DishView _dishWhenGoalParked;
 
+    // Patience beat (exploration plan 9): a Presented (blue) resolution observed
+    // at ANY step latches (same global-observer pattern as ObserveZones) so the
+    // LogicalDish step can never softlock — a blue cook before the step still
+    // counts once the ladder reaches it.
+    bool _sawPresented;
+
+    // Zone gating (exploration plan 1): the cook (center) zone stays LOCKED
+    // through steps 1-2 and unlocks when the CookZone step teaches it. Visual
+    // hint while locked = dim the center zone image.
+    float _centerBaseAlpha = 0.25f;
+    bool _lockVisualApplied;
+
+    /// <summary>Dimmed center-image alpha while the cook zone is locked (hint).</summary>
+    const float LockedCenterAlpha = 0.12f;
+
     void Start()
     {
         if (handController == null || enemyView == null || centerZone == null || cornerZone == null) return;
@@ -101,6 +117,12 @@ public class TutorialController : MonoBehaviour
         _goalLine = $"Objetivo: {goalRecipe.icon} {goalRecipe.dishName} = {IngredientNames()}";
         if (objectiveLabel != null) objectiveLabel.text = _goalLine;
 
+        // Zone gating: the cook zone stays locked through steps 1-2 (only the
+        // corner accepts); the CookZone step unlocks it. The dim is applied on
+        // the first Update so DropZone.Start (which sets the zone color) has
+        // already run.
+        if (centerZone != null) centerZone.Locked = true;
+
         BuildSteps();
         enemyView.Say(_steps[_index].text);
     }
@@ -109,6 +131,8 @@ public class TutorialController : MonoBehaviour
     {
         if (_finished || _steps.Count == 0) return;
         ObserveZones();
+        ObservePresented();
+        UpdateLockVisual();
         UpdateNoRefillsHint();
         _stepTime += Time.deltaTime;
         if (_steps[_index].done() && _stepTime >= _steps[_index].minHold)
@@ -123,6 +147,8 @@ public class TutorialController : MonoBehaviour
         _stepTime = 0f;
         _index++;
         var s = _steps[_index];
+        if (s.type == StepType.CookZone) UnlockCenterZone();
+        if (s.type == StepType.LogicalDish) handController?.ClearCookQueue(); // clean-room: step-3 prop card must not pollute the blue match
         enemyView.Say(s.text);
         if (objectiveLabel != null) objectiveLabel.text = s.objective;
         StartCoroutine(PulseZone(s.pulse));
@@ -146,9 +172,12 @@ public class TutorialController : MonoBehaviour
     {
         Func<bool> done = cfg.type switch
         {
-            StepType.RoleColors => () => centerZone.Count + cornerZone.Count >= 1,
+            // Step 2 is corner-only: the cook zone is LOCKED until the CookZone
+            // step, so the condition reads the corner park only.
+            StepType.RoleColors => () => cornerZone.Count >= 1,
             StepType.CookZone => () => centerZone.Count >= 1,
             StepType.TrashRefill => TrashThenRefill,
+            StepType.LogicalDish => () => _sawPresented,
             StepType.GoalPark => GoalParked,
             StepType.Serve => ServedAfterGoalParked,
             _ => () => true // Welcome
@@ -160,13 +189,14 @@ public class TutorialController : MonoBehaviour
             pulse = cfg.pulse,
             minHold = cfg.minHold,
             noRefillsHint = cfg.noRefillsHint,
+            type = cfg.type,
             done = done
         };
     }
 
     /// <summary>
-    /// The 6-step tutorial ladder authored here as editable defaults: same texts
-    /// and timings as before (2.5s welcome, 0.4s the rest; steps 1 &amp; 5 use the
+    /// The 7-step tutorial ladder authored here as editable defaults: same texts
+    /// and timings as before (2.5s welcome, 0.4s the rest; steps 1 &amp; 6 use the
     /// goal-line fallback via empty objective). The Inspector overrides these.
     /// </summary>
     static StepConfig[] DefaultStepConfigs()
@@ -182,8 +212,8 @@ public class TutorialController : MonoBehaviour
             new StepConfig
             {
                 type = StepType.RoleColors,
-                text = "Mira el color de cada carta: ROJO es base, VERDE es complemento y AMARILLO es sazón. Lleva cualquier carta a una zona.",
-                objective = "Arrastra una carta a la ZONA AZUL (cocina) o a la ZONA ROJA (basura)",
+                text = "Mira el color de cada carta: ROJO es base, VERDE es complemento y AMARILLO es sazón. Lleva cualquier carta a la ZONA ROJA (basura).",
+                objective = "Arrastra una carta a la ZONA ROJA (basura)",
                 minHold = 0.4f
             },
             new StepConfig
@@ -202,6 +232,14 @@ public class TutorialController : MonoBehaviour
                 pulse = ZoneTarget.Corner,
                 minHold = 0.4f,
                 noRefillsHint = true
+            },
+            new StepConfig
+            {
+                type = StepType.LogicalDish,
+                text = "¡NO cocines los tacos todavía! Cocina un plato AZUL (una receta de otra región) y verás cómo baja mi paciencia. Evita la comida cruda.",
+                objective = "Cocina un plato AZUL (no el objetivo) en la cocina",
+                pulse = ZoneTarget.Center,
+                minHold = 0.4f
             },
             new StepConfig
             {
@@ -240,6 +278,45 @@ public class TutorialController : MonoBehaviour
     }
 
     /// <summary>
+    /// Every-frame Presented (blue) observer (patience step): latches when the
+    /// last cooked dish resolved to a logical dish from another region. The
+    /// same global-observer pattern as <see cref="ObserveZones"/> — a blue cook
+    /// at ANY step counts, so the LogicalDish step can never softlock.
+    /// </summary>
+    void ObservePresented()
+    {
+        if (handController != null && handController.LastResolutionKind == RecipeKind.Presented)
+            _sawPresented = true;
+    }
+
+    /// <summary>
+    /// One-shot lock visual (applied on the first Update so DropZone.Start,
+    /// which sets the zone image color from the config, has already run): while
+    /// the cook zone is locked the center image is dimmed as a visual hint.
+    /// </summary>
+    void UpdateLockVisual()
+    {
+        if (_lockVisualApplied || centerImage == null) return;
+        _lockVisualApplied = true;
+        _centerBaseAlpha = centerImage.color.a;
+        if (centerZone != null && centerZone.Locked) SetCenterAlpha(LockedCenterAlpha);
+    }
+
+    /// <summary>Unlocks the cook zone and restores the center image alpha (CookZone step).</summary>
+    void UnlockCenterZone()
+    {
+        if (centerZone != null) centerZone.Locked = false;
+        if (centerImage != null) SetCenterAlpha(_centerBaseAlpha);
+    }
+
+    void SetCenterAlpha(float a)
+    {
+        var c = centerImage.color;
+        c.a = a;
+        centerImage.color = c;
+    }
+
+    /// <summary>
     /// Step 4: a trash park was seen AND a REFILL dump was seen, at ANY step.
     /// Burning refills before step 4 still means the dumps happened, so the step
     /// can never softlock — every spent refill requires a trash park + dump.
@@ -261,8 +338,8 @@ public class TutorialController : MonoBehaviour
     }
 
     /// <summary>
-    /// Step 5: the center cook queue is exactly the goal recipe's ingredient set.
-    /// On the rising edge it records the dish present at parking time so step 6
+    /// Step 6: the center cook queue is exactly the goal recipe's ingredient set.
+    /// On the rising edge it records the dish present at parking time so step 7
     /// can require a serve that happens AFTER the goal was parked.
     /// </summary>
     bool GoalParked()
@@ -282,7 +359,7 @@ public class TutorialController : MonoBehaviour
     }
 
     /// <summary>
-    /// Step 6 (fix WARNING 3): a NEW serve happened after the goal set parked.
+    /// Step 7 (fix WARNING 3): a NEW serve happened after the goal set parked.
     /// Every PREPARAR spawns a fresh DishView instance, so instance inequality
     /// vs the dish present at parking time proves the player served AFTER
     /// parking. A wrong dish cooked BEFORE parking stays the same instance and
