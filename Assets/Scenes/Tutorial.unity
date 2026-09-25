@@ -2120,43 +2120,50 @@ MonoBehaviour:
   steps:
   - text: "Bienvenido, cocinero. Soy la Llorona y tengo antojo de TACOS DE CHAPULINES.
       Te ense\xF1o a prepararlos."
-    minHold: 2.5
+    minHold: 10
     objective: 
     pulse: 0
     noRefillsHint: 0
     type: 0
   - text: "Mira el color de cada carta: ROJO es base, VERDE es complemento y AMARILLO
-      es saz\xF3n. Lleva cualquier carta a una zona."
-    minHold: 0.4
-    objective: Arrastra una carta a la ZONA AZUL (cocina) o a la ZONA ROJA (basura)
+      es saz\xF3n. Lleva cualquier carta a la ZONA ROJA (basura)."
+    minHold: 10
+    objective: Arrastra una carta a la ZONA ROJA (basura)
     pulse: 0
     noRefillsHint: 0
     type: 1
   - text: "La ZONA AZUL es la COCINA: ah\xED se arma el plato con hasta 3 cartas."
-    minHold: 0.4
+    minHold: 10
     objective: Coloca una carta en la ZONA AZUL (cocina)
     pulse: 1
     noRefillsHint: 0
     type: 2
   - text: "La ZONA ROJA es la BASURA. Tira una carta que no uses y pulsa REFILL para
       descartarla y llenar tu mano. \xA1Los refills son limitados!"
-    minHold: 0.4
+    minHold: 10
     objective: Tira una carta a la ZONA ROJA (basura) y pulsa REFILL
     pulse: 2
     noRefillsHint: 1
     type: 3
+  - text: "\xA1NO cocines los tacos todav\xEDa! Cocina un plato AZUL (una receta de
+      otra regi\xF3n) y ver\xE1s c\xF3mo baja mi paciencia. Evita la comida cruda."
+    minHold: 10
+    objective: Cocina un plato AZUL (no el objetivo) en la cocina
+    pulse: 1
+    noRefillsHint: 0
+    type: 4
   - text: "Ahora arma el plato que te ped\xED. Solo se cocinan 3 cartas exactas."
-    minHold: 0.4
+    minHold: 10
     objective: 
     pulse: 0
     noRefillsHint: 0
-    type: 4
+    type: 5
   - text: "\xA1Perfecto! Cuando el plato est\xE9 listo, pulsa PREPARAR para cocinarlo."
-    minHold: 0.4
+    minHold: 10
     objective: Pulsa PREPARAR
     pulse: 0
     noRefillsHint: 0
-    type: 5
+    type: 6
 --- !u!1 &1499845948
 GameObject:
   m_ObjectHideFlags: 0
