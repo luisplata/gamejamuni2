@@ -151,9 +151,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 870988179}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 324.29858, y: -60}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 200, y: 120}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &129699251
@@ -290,9 +290,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 870988179}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 887.1943, y: -60}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 140, y: 120}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &158123648
@@ -1036,6 +1036,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DropZone
   config: {fileID: 11400000, guid: c1484013982216741b6e5db5fc2f86c4, type: 2}
   kind: 1
+  locked: 0
 --- !u!114 &789115915
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1125,9 +1126,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 870988179}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 1125.0889, y: -60}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 287.192, y: 120}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &810844229
@@ -1263,6 +1264,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DropZone
   config: {fileID: 11400000, guid: c1484013982216741b6e5db5fc2f86c4, type: 2}
   kind: 0
+  locked: 0
 --- !u!114 &860907240
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1701,9 +1703,9 @@ RectTransform:
   - {fileID: 475776561}
   m_Father: {fileID: 870988179}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 712.8957, y: -60}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 160, y: 120}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1237249288
@@ -1996,7 +1998,7 @@ MonoBehaviour:
   tint: {r: 0.55, g: 0.65, b: 0.75, a: 1}
   bubble: {fileID: 687604047}
   bubbleText: {fileID: 1149121110}
-  bubbleHideDelay: 2
+  bubbleHideDelay: 10
   winPhrases:
   - "\xA1Tacos de chapulines! \xA1Justo lo que llor\xE9 pedir! \U0001F979"
   - "Gracias, cocinero... ahora podr\xE9 descansar."
@@ -2145,8 +2147,8 @@ MonoBehaviour:
     pulse: 2
     noRefillsHint: 1
     type: 3
-  - text: "\xA1NO cocines los tacos todav\xEDa! Cocina un plato AZUL (una receta de
-      otra regi\xF3n) y ver\xE1s c\xF3mo baja mi paciencia. Evita la comida cruda."
+  - text: "\xA1NO cocines los tacos todav\xEDa! Cocina un plato AZUL (una receta
+      de otra regi\xF3n) y ver\xE1s c\xF3mo baja mi paciencia. Evita la comida cruda."
     minHold: 10
     objective: Cocina un plato AZUL (no el objetivo) en la cocina
     pulse: 1
@@ -2298,9 +2300,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 870988179}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 100, y: -150}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 200, y: 300}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1638346005
@@ -2623,9 +2625,9 @@ RectTransform:
   - {fileID: 712268014}
   m_Father: {fileID: 870988179}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 528.59717, y: -60}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 160, y: 120}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1765695989
